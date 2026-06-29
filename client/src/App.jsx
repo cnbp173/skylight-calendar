@@ -8,7 +8,8 @@ import { useWeatherData } from './hooks/useWeatherData.js';
 
 export default function App() {
   const [authenticated, setAuthenticated] = useState(null);
-  const { calendars, events, loading } = useCalendarData(authenticated);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const { calendars, events, loading } = useCalendarData(authenticated, weekOffset);
   const { weather } = useWeatherData();
 
   useEffect(() => {
@@ -23,8 +24,14 @@ export default function App() {
 
   return (
     <div style={styles.container}>
-      <Header weather={weather} />
-      <WeekView events={events} calendars={calendars} loading={loading} />
+      <Header
+        weather={weather}
+        weekOffset={weekOffset}
+        onPrevWeek={() => setWeekOffset((w) => w - 1)}
+        onNextWeek={() => setWeekOffset((w) => w + 1)}
+        onToday={() => setWeekOffset(0)}
+      />
+      <WeekView events={events} calendars={calendars} loading={loading} weekOffset={weekOffset} />
     </div>
   );
 }

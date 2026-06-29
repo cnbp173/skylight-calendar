@@ -1,8 +1,11 @@
 import React from 'react';
 import DayColumn from './DayColumn.jsx';
 
-export default function WeekView({ events, calendars, loading }) {
-  const days = getWeekDays();
+const DAY_START_HOUR = 7;
+const DAY_END_HOUR = 22;
+
+export default function WeekView({ events, calendars, loading, weekOffset = 0 }) {
+  const days = getWeekDays(weekOffset);
   const today = new Date().toDateString();
 
   const calendarColorMap = {};
@@ -20,25 +23,46 @@ export default function WeekView({ events, calendars, loading }) {
     );
   }
 
+  const hours = [];
+  for (let h = DAY_START_HOUR; h <= DAY_END_HOUR; h++) {
+    hours.push(h);
+  }
+
   return (
-    <div style={styles.grid}>
-      {days.map((day) => (
-        <DayColumn
-          key={day.toISOString()}
-          date={day}
-          events={eventsByDay[day.toDateString()] || []}
-          isToday={day.toDateString() === today}
-          colorMap={calendarColorMap}
-        />
-      ))}
+    <div style={styles.container}>
+      <div style={styles.timeGutter}>
+        <div style={styles.gutterHeader} />
+        <div style={styles.gutterBody}>
+          {hours.map((h) => (
+            <div key={h} style={styles.gutterHour}>
+              <span style={styles.gutterLabel}>
+                {h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={styles.grid}>
+        {days.map((day) => (
+          <DayColumn
+            key={day.toISOString()}
+            date={day}
+            events={eventsByDay[day.toDateString()] || []}
+            isToday={day.toDateString() === today}
+            colorMap={calendarColorMap}
+            dayStartHour={DAY_START_HOUR}
+            dayEndHour={DAY_END_HOUR}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
-function getWeekDays() {
+function getWeekDays(weekOffset = 0) {
   const now = new Date();
   const start = new Date(now);
-  start.setDate(start.getDate() - start.getDay());
+  start.setDate(start.getDate() - start.getDay() + weekOffset * 7);
   start.setHours(0, 0, 0, 0);
 
   return Array.from({ length: 7 }, (_, i) => {
@@ -66,12 +90,47 @@ function groupEventsByDay(events, days) {
 }
 
 const styles = {
+  container: {
+    display: 'flex',
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
+  },
+  timeGutter: {
+    display: 'flex',
+    flexDirection: 'column',
+    width: '52px',
+    flexShrink: 0,
+  },
+  gutterHeader: {
+    height: '48px',
+    flexShrink: 0,
+  },
+  gutterBody: {
+    flex: 1,
+    position: 'relative',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  gutterHour: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-end',
+    paddingRight: '8px',
+  },
+  gutterLabel: {
+    fontSize: '11px',
+    color: 'var(--text-muted)',
+    transform: 'translateY(-6px)',
+    whiteSpace: 'nowrap',
+  },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(7, 1fr)',
-    gap: '8px',
+    gap: '4px',
     flex: 1,
-    minHeight: 0,
+    minWidth: 0,
   },
   loading: {
     flex: 1,

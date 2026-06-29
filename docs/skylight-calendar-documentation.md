@@ -203,6 +203,62 @@ Open `http://localhost:5173` in your browser. You'll see the setup screen prompt
 
 ## Step 5: Deploy to Raspberry Pi
 
+### Hardware Setup: HDMI Connection
+
+1. **Connect the Pi to your TV/monitor** using an HDMI cable:
+   - **Raspberry Pi 4**: Has two micro-HDMI ports. Use the port labeled **HDMI0** (closest to the USB-C power port). You'll need a **micro-HDMI to HDMI** cable or adapter.
+   - **Raspberry Pi 5**: Has two micro-HDMI ports. Use **HDMI0** (same position). Same cable type as Pi 4.
+   - Connect the other end to any available HDMI input on your TV.
+
+2. **Set the TV input** to the HDMI port you connected (e.g., HDMI 1, HDMI 2).
+
+3. **Power the Pi** via USB-C. The Pi should boot and display the Raspberry Pi OS desktop on the TV.
+
+#### HDMI Tips
+
+| Issue | Solution |
+|-------|----------|
+| No signal on TV | Try the other HDMI port on the Pi, or a different HDMI input on the TV |
+| Resolution looks wrong | The Pi auto-detects resolution via EDID. If it's not 1080p, edit `/boot/firmware/config.txt` and add `hdmi_group=1` and `hdmi_mode=16` to force 1080p |
+| TV shows black borders | Add `disable_overscan=1` to `/boot/firmware/config.txt` |
+| Display is rotated | Add `display_hdmi_rotate=1` (90°), `=2` (180°), or `=3` (270°) to `/boot/firmware/config.txt` |
+| Want the TV to turn on/off with the Pi | HDMI-CEC is enabled by default. Most modern TVs support CEC — the TV will power on when the Pi boots and enter standby when the Pi shuts down. You can control this with `cec-client` (install via `sudo apt-get install cec-utils`) |
+
+#### HDMI-CEC: Auto Power Control
+
+HDMI-CEC allows the Pi to turn your TV on and off automatically. This is useful for:
+- Turning the display on in the morning and off at night
+- Waking the TV when the Pi boots
+
+```bash
+# Install CEC utilities
+sudo apt-get install cec-utils
+
+# Turn TV on
+echo "on 0" | cec-client -s -d 1
+
+# Turn TV off (standby)
+echo "standby 0" | cec-client -s -d 1
+```
+
+To schedule the TV on/off automatically, add cron jobs:
+
+```bash
+crontab -e
+```
+
+Add these lines (example: on at 7 AM, off at 10 PM):
+
+```
+0 7 * * * echo "on 0" | cec-client -s -d 1
+0 22 * * * echo "standby 0" | cec-client -s -d 1
+```
+
+#### Recommended Cables
+
+- **Micro-HDMI to HDMI cable** (Pi 4/5): Any certified cable works. For runs over 3m/10ft, use a High Speed HDMI cable rated for 4K to avoid signal issues at 1080p.
+- **Mount the Pi**: Use a VESA mount bracket or double-sided tape to attach the Pi to the back of the TV for a clean installation.
+
 ### Transfer the project
 
 ```bash
@@ -231,10 +287,26 @@ sudo reboot
 
 After the Pi reboots:
 
-1. From any device on the same network, open a browser to `http://<pi-ip>:3001`
-2. Click "Connect Google Calendar"
-3. Complete the Google sign-in flow
-4. The TV display will automatically start showing your calendar
+1. The TV should show Chromium in full-screen with the Skylight Calendar setup screen
+2. From any device on the same network, open a browser to `http://<pi-ip>:3001`
+3. Click "Connect Google Calendar"
+4. Complete the Google sign-in flow
+5. The TV display will automatically start showing your calendar
+
+### Verifying the deployment
+
+Once authenticated, the TV should display the week view with your events. To verify everything is running:
+
+```bash
+# Check the server is running
+sudo systemctl status skylight-calendar
+
+# Check the Pi's IP address (to access from other devices)
+hostname -I
+
+# View server logs
+journalctl -u skylight-calendar -f
+```
 
 \newpage
 

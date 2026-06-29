@@ -16,6 +16,82 @@ const CALENDAR_COLORS = [
   '#A1887F', // brown
 ];
 
+const DEMO_CALENDARS = [
+  { id: 'demo-sarah', summary: 'Sarah', color: '#F06292', primary: false },
+  { id: 'demo-kids', summary: 'Kids', color: '#FFB74D', primary: false },
+];
+
+function generateDemoEvents(timeMin, timeMax) {
+  const start = new Date(timeMin);
+  const events = [];
+
+  const sarahEvents = [
+    { day: 1, hour: 9, duration: 1, title: 'Yoga Class' },
+    { day: 1, hour: 12, duration: 1, title: 'Lunch with Amy' },
+    { day: 2, hour: 10, duration: 1.5, title: 'Book Club' },
+    { day: 3, hour: 8, duration: 0.75, title: 'Morning Run' },
+    { day: 3, hour: 14, duration: 1, title: 'Dentist Appointment', location: '45 Oak St' },
+    { day: 4, hour: 11, duration: 1, title: 'Coffee with Mom' },
+    { day: 5, hour: 9, duration: 1, title: 'Yoga Class' },
+    { day: 5, hour: 15, duration: 2, title: 'Volunteering' },
+    { day: 6, hour: 10, duration: 1.5, title: 'Farmers Market' },
+  ];
+
+  const kidsEvents = [
+    { day: 1, hour: 15.5, duration: 1, title: 'Soccer Practice', location: 'Lincoln Park' },
+    { day: 2, hour: 16, duration: 1, title: 'Piano Lesson' },
+    { day: 3, hour: 15.5, duration: 1, title: 'Soccer Practice', location: 'Lincoln Park' },
+    { day: 4, hour: 16, duration: 1.5, title: 'Swimming', location: 'YMCA Pool' },
+    { day: 5, hour: 15, duration: 1, title: 'Art Class' },
+    { day: 6, hour: 9, duration: 2, title: 'Soccer Game', location: 'Riverside Field' },
+    { day: 0, hour: 10, duration: 1, title: 'Playdate at Millers' },
+  ];
+
+  sarahEvents.forEach((e, i) => {
+    const eventStart = new Date(start);
+    eventStart.setDate(eventStart.getDate() + e.day);
+    eventStart.setHours(Math.floor(e.hour), (e.hour % 1) * 60, 0, 0);
+    const eventEnd = new Date(eventStart);
+    eventEnd.setMinutes(eventEnd.getMinutes() + e.duration * 60);
+
+    if (eventStart >= new Date(timeMin) && eventStart < new Date(timeMax)) {
+      events.push({
+        id: `demo-sarah-${i}`,
+        calendarId: 'demo-sarah',
+        title: e.title,
+        start: eventStart.toISOString(),
+        end: eventEnd.toISOString(),
+        allDay: false,
+        location: e.location || null,
+        description: null,
+      });
+    }
+  });
+
+  kidsEvents.forEach((e, i) => {
+    const eventStart = new Date(start);
+    eventStart.setDate(eventStart.getDate() + e.day);
+    eventStart.setHours(Math.floor(e.hour), (e.hour % 1) * 60, 0, 0);
+    const eventEnd = new Date(eventStart);
+    eventEnd.setMinutes(eventEnd.getMinutes() + e.duration * 60);
+
+    if (eventStart >= new Date(timeMin) && eventStart < new Date(timeMax)) {
+      events.push({
+        id: `demo-kids-${i}`,
+        calendarId: 'demo-kids',
+        title: e.title,
+        start: eventStart.toISOString(),
+        end: eventEnd.toISOString(),
+        allDay: false,
+        location: e.location || null,
+        description: null,
+      });
+    }
+  });
+
+  return events;
+}
+
 export function createCalendarRouter() {
   const router = Router();
 
@@ -34,10 +110,12 @@ export function createCalendarRouter() {
         primary: cal.primary || false,
       }));
 
+      calendars.push(...DEMO_CALENDARS);
+
       res.json(calendars);
     } catch (error) {
-      console.error('Calendar list error:', error.message);
-      res.status(500).json({ error: 'Failed to fetch calendars' });
+      console.error('Calendar list error:', error.message, error.response?.data || '');
+      res.status(500).json({ error: 'Failed to fetch calendars', detail: error.message });
     }
   });
 
@@ -88,7 +166,8 @@ export function createCalendarRouter() {
         })
       );
 
-      const events = allEvents.flat().sort((a, b) =>
+      const demoEvents = generateDemoEvents(weekStart, weekEnd);
+      const events = [...allEvents.flat(), ...demoEvents].sort((a, b) =>
         new Date(a.start) - new Date(b.start)
       );
 
