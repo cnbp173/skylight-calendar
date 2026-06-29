@@ -23,6 +23,7 @@ The display is designed to be always-on and glanceable — large typography, col
 
 - **Week View Display**: Seven-day grid showing all upcoming events at a glance
 - **Multi-Calendar Support**: Sync multiple Google Calendars with distinct colors per calendar (great for families)
+- **Calendar Legend**: Color-coded legend at the top showing each calendar's name and color for easy identification
 - **Weather Widget**: Current temperature and conditions displayed in the header
 - **Auto-Refresh**: Events update every 5 minutes, weather every 30 minutes
 - **Kiosk Mode**: Full-screen display with no cursor, no screen blanking, auto-start on boot
@@ -103,6 +104,7 @@ skylight-calendar/
 │   │   │   └── global.css # CSS variables and base styles
 │   │   ├── components/
 │   │   │   ├── Header.jsx
+│   │   │   ├── CalendarLegend.jsx
 │   │   │   ├── WeekView.jsx
 │   │   │   ├── DayColumn.jsx
 │   │   │   ├── EventCard.jsx

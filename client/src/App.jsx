@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import WeekView from './components/WeekView.jsx';
 import WeatherWidget from './components/WeatherWidget.jsx';
 import Header from './components/Header.jsx';
+import CalendarLegend from './components/CalendarLegend.jsx';
 import SetupScreen from './components/SetupScreen.jsx';
 import { useCalendarData } from './hooks/useCalendarData.js';
 import { useWeatherData } from './hooks/useWeatherData.js';
@@ -31,6 +32,7 @@ export default function App() {
         onNextWeek={() => setWeekOffset((w) => w + 1)}
         onToday={() => setWeekOffset(0)}
       />
+      <CalendarLegend calendars={calendars} />
       <WeekView events={events} calendars={calendars} loading={loading} weekOffset={weekOffset} />
     </div>
   );

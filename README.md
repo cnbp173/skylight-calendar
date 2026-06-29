@@ -5,6 +5,7 @@ A Skylight-inspired digital calendar display for Raspberry Pi. Syncs with Google
 ## Features
 
 - Weekly agenda view with color-coded events per calendar
+- Calendar legend showing each person's name and color
 - Multiple Google Calendar support (family members, work, etc.)
 - Weather widget (current conditions + temperature)
 - Auto-refreshing display (5 min for events, 30 min for weather)
@@ -102,6 +103,7 @@ skylight-calendar/
 │       ├── App.jsx           # Main app with auth check
 │       ├── components/
 │       │   ├── Header.jsx    # Date/time + weather
+│       │   ├── CalendarLegend.jsx # Color legend per calendar
 │       │   ├── WeekView.jsx  # 7-day grid layout
 │       │   ├── DayColumn.jsx # Single day column
 │       │   ├── EventCard.jsx # Individual event
