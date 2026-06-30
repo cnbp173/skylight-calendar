@@ -95,10 +95,10 @@ export function createWeatherRouter() {
       const cached = cache.get(cacheKey);
       if (cached) return res.json(cached);
 
-      // Fetch from OpenWeatherMap's One Call 3.0 API
+      // Fetch from OpenWeatherMap's One Call API 4.0
       // Units: imperial (Fahrenheit) — matches the US-centric demo data
       // Exclude: minutely (too granular) and alerts (not displayed)
-      const url = `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${apiKey}&units=imperial&exclude=minutely,alerts`;
+      const url = `https://api.openweathermap.org/data/4.0/onecall?lat=${lat}&lon=${lon}&appid=${apiKey}&units=imperial&exclude=minutely,alerts`;
       const response = await fetch(url);
 
       if (!response.ok) {
