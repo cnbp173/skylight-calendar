@@ -10,6 +10,10 @@
  * This component acts as a "droppable" zone for @dnd-kit — dragged events
  * can be dropped here to reschedule them to this day.
  *
+ * Each timed event also has a resize handle at its bottom edge that allows
+ * the user to drag up/down to change the event's duration in 15-minute
+ * increments.
+ *
  * Props:
  *   @param {Date} date - The date this column represents
  *   @param {Array} events - Events occurring on this day
@@ -18,14 +22,17 @@
  *   @param {number} dayStartHour - First hour shown in the grid (e.g., 7)
  *   @param {number} dayEndHour - Last hour shown in the grid (e.g., 22)
  *   @param {function} onEventEdit - Callback when user double-clicks an event
+ *   @param {function} onEventResize - Callback during resize for live preview (eventId, newEndISO)
+ *   @param {function} onEventResizeEnd - Callback when resize finishes to persist the change
  */
 
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import DraggableEvent from './DraggableEvent.jsx';
 import EventCard from './EventCard.jsx';
+import ResizeHandle from './ResizeHandle.jsx';
 
-export default function DayColumn({ date, events, isToday, colorMap, dayStartHour, dayEndHour, onEventEdit }) {
+export default function DayColumn({ date, events, isToday, colorMap, dayStartHour, dayEndHour, onEventEdit, onEventResize, onEventResizeEnd }) {
   // Format the day name and number for the column header
   const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
   const dayNum = date.getDate();
@@ -36,6 +43,29 @@ export default function DayColumn({ date, events, isToday, colorMap, dayStartHou
   // Separate all-day events from timed events (they're rendered differently)
   const allDayEvents = events.filter((e) => e.allDay);
   const timedEvents = events.filter((e) => !e.allDay);
+
+  // Ref to the time grid element — we measure its pixel height for resize calculations
+  const timeGridRef = useRef(null);
+  const [gridHeight, setGridHeight] = useState(0);
+
+  /**
+   * Measure the time grid's pixel height on mount and whenever it changes.
+   * This is needed by ResizeHandle to convert pixel drag distance into
+   * minutes for the end-time calculation.
+   */
+  useEffect(() => {
+    if (timeGridRef.current) {
+      const updateHeight = () => {
+        setGridHeight(timeGridRef.current.clientHeight);
+      };
+      updateHeight();
+
+      // Re-measure if the window resizes (TV resolution change, dev tools, etc.)
+      const observer = new ResizeObserver(updateHeight);
+      observer.observe(timeGridRef.current);
+      return () => observer.disconnect();
+    }
+  }, []);
 
   /**
    * Register this column as a droppable target with @dnd-kit.
@@ -83,7 +113,7 @@ export default function DayColumn({ date, events, isToday, colorMap, dayStartHou
       )}
 
       {/* Time grid — events are positioned absolutely based on their time */}
-      <div style={styles.timeGrid}>
+      <div ref={timeGridRef} style={styles.timeGrid}>
         {/* Horizontal grid lines marking each hour */}
         {Array.from({ length: totalHours }, (_, i) => (
           <div
@@ -98,7 +128,7 @@ export default function DayColumn({ date, events, isToday, colorMap, dayStartHou
           />
         ))}
 
-        {/* Render each timed event as a positioned, draggable card */}
+        {/* Render each timed event as a positioned, draggable card with resize handle */}
         {timedEvents.map((event) => {
           const startDate = new Date(event.start);
           const endDate = new Date(event.end);
@@ -141,6 +171,18 @@ export default function DayColumn({ date, events, isToday, colorMap, dayStartHou
                 color={colorMap[event.calendarId]}
                 compact={heightPct < 8}
               />
+              {/* Resize handle at the bottom edge — only shown for timed events
+                  with enough height to accommodate it */}
+              {heightPct >= 5 && (
+                <ResizeHandle
+                  event={event}
+                  dayStartHour={dayStartHour}
+                  dayEndHour={dayEndHour}
+                  gridHeight={gridHeight}
+                  onResize={onEventResize}
+                  onResizeEnd={onEventResizeEnd}
+                />
+              )}
             </DraggableEvent>
           );
         })}

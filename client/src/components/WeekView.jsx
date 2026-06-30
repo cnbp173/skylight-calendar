@@ -20,11 +20,11 @@
  *   @param {Array} calendars - Calendar metadata (for color mapping)
  *   @param {boolean} loading - Whether events are still being fetched
  *   @param {number} weekOffset - Current week offset (for date calculation)
- *   @param {function} onEventUpdate - Callback to persist event changes
+ *   @param {function} onEventUpdate - Callback to persist event changes (drag-drop and resize)
  *   @param {function} onEventEdit - Callback to open the edit dialog on double-click
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import DayColumn from './DayColumn.jsx';
 import EventCard from './EventCard.jsx';
@@ -38,6 +38,10 @@ const DAY_END_HOUR = 22;
 export default function WeekView({ events, calendars, loading, weekOffset = 0, onEventUpdate, onEventEdit }) {
   // Track which event is currently being dragged (for the drag overlay)
   const [activeEvent, setActiveEvent] = useState(null);
+
+  // Track live resize preview — maps eventId to a temporary end time ISO string.
+  // This allows the event card to visually resize in real-time while the user drags.
+  const [resizePreview, setResizePreview] = useState({});
 
   /**
    * Configure the pointer sensor with a 5px activation distance.
@@ -64,8 +68,15 @@ export default function WeekView({ events, calendars, loading, weekOffset = 0, o
     calendarColorMap[cal.id] = cal.color;
   });
 
+  // Apply resize previews to events so the visual height updates live.
+  // During an active resize, the event's end time is temporarily overridden
+  // with the preview value for rendering purposes only.
+  const eventsWithPreviews = events.map((evt) =>
+    resizePreview[evt.id] ? { ...evt, end: resizePreview[evt.id] } : evt
+  );
+
   // Group events into buckets by day for rendering in the correct column
-  const eventsByDay = groupEventsByDay(events, days);
+  const eventsByDay = groupEventsByDay(eventsWithPreviews, days);
 
   // Show a loading indicator while the first fetch is in progress
   if (loading) {
@@ -140,6 +151,37 @@ export default function WeekView({ events, calendars, loading, weekOffset = 0, o
     });
   };
 
+  /**
+   * Called continuously during a resize drag for live visual feedback.
+   * Updates the preview state so the event card's height adjusts in real-time
+   * as the user drags the resize handle.
+   *
+   * @param {string} eventId - The event being resized
+   * @param {string} newEndISO - The provisional new end time
+   */
+  const handleEventResize = useCallback((eventId, newEndISO) => {
+    setResizePreview((prev) => ({ ...prev, [eventId]: newEndISO }));
+  }, []);
+
+  /**
+   * Called when the user releases the resize handle.
+   * Clears the preview state and persists the new end time to Google Calendar.
+   *
+   * @param {string} eventId - The event that was resized
+   * @param {object} updates - { calendarId, end } to persist
+   */
+  const handleEventResizeEnd = useCallback((eventId, updates) => {
+    // Clear the preview for this event
+    setResizePreview((prev) => {
+      const next = { ...prev };
+      delete next[eventId];
+      return next;
+    });
+
+    // Persist the new end time
+    onEventUpdate(eventId, updates);
+  }, [onEventUpdate]);
+
   return (
     <DndContext
       sensors={sensors}
@@ -173,6 +215,8 @@ export default function WeekView({ events, calendars, loading, weekOffset = 0, o
               dayStartHour={DAY_START_HOUR}
               dayEndHour={DAY_END_HOUR}
               onEventEdit={onEventEdit}
+              onEventResize={handleEventResize}
+              onEventResizeEnd={handleEventResizeEnd}
             />
           ))}
         </div>

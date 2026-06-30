@@ -7,6 +7,7 @@
  *   - Applies today highlighting
  *   - Separates all-day events from timed events
  *   - Acts as a valid drop target for drag-and-drop
+ *   - Shows resize handles on timed events
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -31,6 +32,8 @@ describe('DayColumn', () => {
     dayStartHour: 7,
     dayEndHour: 22,
     onEventEdit: vi.fn(),
+    onEventResize: vi.fn(),
+    onEventResizeEnd: vi.fn(),
   };
 
   it('renders day name and number', () => {
@@ -99,5 +102,19 @@ describe('DayColumn', () => {
     fireEvent.doubleClick(eventElement);
 
     expect(onEventEdit).toHaveBeenCalledWith(events[0]);
+  });
+
+  it('renders resize handles on timed events', () => {
+    const events = [
+      { id: '1', title: 'Resizable Event', start: '2026-06-29T09:00:00', end: '2026-06-29T11:00:00', allDay: false, calendarId: 'cal1' },
+    ];
+
+    renderWithDnd(
+      <DayColumn {...defaultProps} events={events} colorMap={{ cal1: '#4285f4' }} />
+    );
+
+    // The resize handle has an aria-label containing "Resize"
+    const handle = screen.getByLabelText(/Resize Resizable Event/);
+    expect(handle).toBeInTheDocument();
   });
 });
