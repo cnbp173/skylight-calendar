@@ -137,7 +137,7 @@ Change title, date, time, or description:
 To show weather on the display:
 
 1. Sign up at **openweathermap.org**
-2. Get a free API key (One Call API 3.0)
+2. Get a free API key (One Call API 4.0)
 3. Add to your `.env`:
 
 ```

@@ -23,6 +23,7 @@ The display is designed to be always-on and glanceable — large typography, col
 
 - **Week View Display**: Seven-day grid showing all upcoming events at a glance
 - **Drag-and-Drop Rescheduling**: Move events between days within the current week by dragging with a mouse/touchpad
+- **Drag-to-Resize Duration**: Extend or shorten events by dragging the handle at the bottom edge, snapping to 15-minute increments
 - **Double-Click Edit Dialog**: Modify event title, date, time, and description — supports rescheduling to dates outside the visible week
 - **Google Calendar Write-Back**: Changes sync back to Google Calendar in real-time
 - **Create New Appointments**: Add events directly from the display and assign them to any connected calendar
@@ -80,7 +81,7 @@ The display is designed to be always-on and glanceable — large typography, col
 | Frontend | React + Vite | Calendar UI rendering |
 | Drag-and-Drop | @dnd-kit/core | Event rescheduling within the week view |
 | Auth | Google OAuth 2.0 | Calendar read/write access |
-| Weather | OpenWeatherMap 3.0 | Current conditions + forecast |
+| Weather | OpenWeatherMap 4.0 | Current conditions + forecast |
 | Display | Chromium Kiosk | Full-screen browser on Pi |
 | Process Mgmt | systemd | Server auto-start on boot |
 
@@ -111,12 +112,14 @@ skylight-calendar/
 │   │   │   └── global.css # CSS variables and base styles
 │   │   ├── components/
 │   │   │   ├── Header.jsx
-│   │   │   ├── CalendarLegend.jsx
-│   │   │   ├── WeekView.jsx        # DnD context wrapper
-│   │   │   ├── DayColumn.jsx       # Droppable zone
-│   │   │   ├── DraggableEvent.jsx  # Drag wrapper for events
+│   │   │   ├── CalendarLegend.jsx   # Max 4-wide grid of calendar colors
+│   │   │   ├── WeekView.jsx         # DnD context wrapper + resize preview
+│   │   │   ├── DayColumn.jsx        # Droppable zone + resize handles
+│   │   │   ├── DraggableEvent.jsx   # Drag wrapper for events
+│   │   │   ├── ResizeHandle.jsx     # Bottom-edge handle for duration resize
 │   │   │   ├── EventCard.jsx
-│   │   │   ├── EditEventDialog.jsx # Modal for editing events
+│   │   │   ├── EditEventDialog.jsx  # Modal for editing events
+│   │   │   ├── AddEventDialog.jsx   # Modal for creating new appointments
 │   │   │   ├── WeatherWidget.jsx
 │   │   │   └── SetupScreen.jsx
 │   │   └── hooks/
@@ -184,7 +187,7 @@ The application requests the following OAuth scopes:
 
 1. Create an account at `https://openweathermap.org/`
 2. Go to **API keys** in your account dashboard
-3. Subscribe to **One Call API 3.0** (requires payment method but includes 1,000 free calls/day — more than enough for this use case)
+3. Subscribe to **One Call API 4.0** (requires payment method but includes 1,000 free calls/day — more than enough for this use case)
 4. Copy your API key
 5. Find your location coordinates:
    - Open Google Maps
@@ -405,6 +408,20 @@ To move an event to a different day within the current week:
 - The event's duration stays the same
 - Changes sync to Google Calendar immediately
 - If the sync fails, the event snaps back to its original position
+
+## Resizing Events (Drag Handle)
+
+To make an event longer or shorter without opening the edit dialog:
+
+1. Hover over the bottom edge of an event card — a small horizontal bar appears
+2. **Click and drag** the handle downward to extend the event, or upward to shorten it
+3. The duration snaps to **15-minute increments** as you drag
+4. Release to confirm — the new end time syncs to Google Calendar
+
+**Constraints:**
+- Minimum duration is 15 minutes (you can't resize shorter than that)
+- Events cannot extend past 10 PM (the end of the visible grid)
+- The resize handle only appears on events tall enough to accommodate it
 
 ## Edit Dialog (Any Date/Time)
 
@@ -841,7 +858,7 @@ const url = `...&units=metric&...`;
 
 **Q: The weather widget shows nothing. What's wrong?**
 
-A: Verify your OpenWeatherMap API key is active and that you've subscribed to the One Call API 3.0. New API keys can take a few minutes to activate.
+A: Verify your OpenWeatherMap API key is active and that you've subscribed to the One Call API 4.0. New API keys can take a few minutes to activate.
 
 ## Raspberry Pi
 

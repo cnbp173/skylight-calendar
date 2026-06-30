@@ -33,7 +33,7 @@ Designed for use with an iPazzPort 2.4G Mini Wireless Keyboard with Touchpad Mou
 ### 2. Weather API Setup
 
 1. Sign up at [OpenWeatherMap](https://openweathermap.org/api)
-2. Get a free API key (One Call API 3.0 — requires credit card but has 1000 free calls/day)
+2. Get a free API key (One Call API 4.0 — requires credit card but has 1000 free calls/day)
 3. Find your latitude/longitude (Google Maps → right-click any location)
 
 ### 3. Configure & Run
