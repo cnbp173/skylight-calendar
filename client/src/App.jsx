@@ -7,7 +7,7 @@
  *
  * Layout (top to bottom):
  *   1. Header — shows week range, current time, navigation buttons, weather
- *   2. CalendarLegend — colored dots identifying each connected calendar
+ *   2. CalendarLegend + "Add New Appointment" button
  *   3. WeekView — the 7-day grid showing all events (with drag-and-drop)
  *
  * If the user hasn't connected Google Calendar yet, shows SetupScreen instead.
@@ -20,6 +20,7 @@ import Header from './components/Header.jsx';
 import CalendarLegend from './components/CalendarLegend.jsx';
 import SetupScreen from './components/SetupScreen.jsx';
 import EditEventDialog from './components/EditEventDialog.jsx';
+import AddEventDialog from './components/AddEventDialog.jsx';
 import { useCalendarData } from './hooks/useCalendarData.js';
 import { useWeatherData } from './hooks/useWeatherData.js';
 
@@ -33,8 +34,11 @@ export default function App() {
   // The event currently open in the edit dialog (null = dialog closed)
   const [editingEvent, setEditingEvent] = useState(null);
 
-  // Core data hooks — calendars, events, and the mutation function
-  const { calendars, events, loading, updateEvent } = useCalendarData(authenticated, weekOffset);
+  // Whether the "Add New Appointment" dialog is open
+  const [showAddDialog, setShowAddDialog] = useState(false);
+
+  // Core data hooks — calendars, events, and mutation functions
+  const { calendars, events, loading, updateEvent, createEvent } = useCalendarData(authenticated, weekOffset);
   const { weather } = useWeatherData();
 
   /**
@@ -52,8 +56,6 @@ export default function App() {
   /**
    * Opens the edit dialog for a given event.
    * Called when the user double-clicks an event card.
-   *
-   * @param {object} event - The event to edit
    */
   const handleEditEvent = (event) => {
     setEditingEvent(event);
@@ -62,14 +64,23 @@ export default function App() {
   /**
    * Saves changes from the edit dialog.
    * Delegates to updateEvent which handles optimistic updates and server sync.
-   *
-   * @param {string} eventId - The event's ID
-   * @param {object} updates - The fields to update
    */
   const handleSaveEvent = async (eventId, updates) => {
     const success = await updateEvent(eventId, updates);
     if (success) {
       setEditingEvent(null);
+    }
+    return success;
+  };
+
+  /**
+   * Creates a new event from the add dialog.
+   * Delegates to createEvent which posts to the server and adds to local state.
+   */
+  const handleCreateEvent = async (eventData) => {
+    const success = await createEvent(eventData);
+    if (success) {
+      setShowAddDialog(false);
     }
     return success;
   };
@@ -91,8 +102,17 @@ export default function App() {
         onToday={() => setWeekOffset(0)}
       />
 
-      {/* Colored legend showing which calendar each color represents */}
-      <CalendarLegend calendars={calendars} />
+      {/* Calendar legend and add button row */}
+      <div style={styles.legendRow}>
+        <CalendarLegend calendars={calendars} />
+        <button
+          style={styles.addButton}
+          onClick={() => setShowAddDialog(true)}
+          aria-label="Add new appointment"
+        >
+          + Add New Appointment
+        </button>
+      </div>
 
       {/* The main 7-day grid with draggable events */}
       <WeekView
@@ -112,6 +132,15 @@ export default function App() {
           onClose={() => setEditingEvent(null)}
         />
       )}
+
+      {/* Modal dialog for creating new appointments */}
+      {showAddDialog && (
+        <AddEventDialog
+          calendars={calendars}
+          onCreate={handleCreateEvent}
+          onClose={() => setShowAddDialog(false)}
+        />
+      )}
     </div>
   );
 }
@@ -128,5 +157,24 @@ const styles = {
     flexDirection: 'column',
     padding: '24px 32px',
     gap: '16px',
+  },
+  legendRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '16px',
+  },
+  addButton: {
+    padding: '10px 20px',
+    fontSize: '14px',
+    fontWeight: 500,
+    border: 'none',
+    borderRadius: '8px',
+    background: '#4285f4',
+    color: '#ffffff',
+    cursor: 'pointer',
+    minHeight: '44px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
 };

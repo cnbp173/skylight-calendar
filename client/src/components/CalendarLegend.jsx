@@ -6,6 +6,9 @@
  * This helps users understand which color corresponds to which calendar
  * (e.g., "Work" = blue, "Family" = green).
  *
+ * Limited to a maximum of 4 calendars per row. If there are more than 4,
+ * they wrap to additional rows.
+ *
  * Returns null if no calendars are available (graceful empty state).
  *
  * Props:
@@ -35,10 +38,11 @@ export default function CalendarLegend({ calendars }) {
 /** Component styles */
 const styles = {
   container: {
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, auto)',
     alignItems: 'center',
-    gap: '20px',
-    flexWrap: 'wrap',
+    gap: '12px 20px',
+    justifyContent: 'start',
   },
   item: {
     display: 'flex',

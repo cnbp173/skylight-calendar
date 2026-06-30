@@ -262,6 +262,79 @@ export function createCalendarRouter() {
   });
 
   /**
+   * POST /api/calendar/events
+   *
+   * Creates a new event on Google Calendar. Called when the user clicks
+   * "Add New Appointment" and submits the form.
+   *
+   * Body (JSON):
+   *   - calendarId: (required) Which calendar to create the event on
+   *   - title: (required) Event title/summary
+   *   - start: (required) Start time as ISO string
+   *   - end: (required) End time as ISO string
+   *   - description: (optional) Event description
+   *
+   * On success:
+   *   - Creates the event on Google Calendar
+   *   - Flushes all cached events so the next fetch includes the new event
+   *   - Returns the created event in our standard format
+   */
+  router.post('/events', async (req, res) => {
+    try {
+      const auth = getAuthenticatedClient();
+      if (!auth) return res.status(401).json({ error: 'Not authenticated' });
+
+      const { calendarId, title, start, end, description } = req.body;
+
+      // Validate required fields
+      if (!calendarId) {
+        return res.status(400).json({ error: 'calendarId is required' });
+      }
+      if (!title) {
+        return res.status(400).json({ error: 'title is required' });
+      }
+      if (!start || !end) {
+        return res.status(400).json({ error: 'start and end are required' });
+      }
+
+      // Build the event resource for Google Calendar API
+      const eventResource = {
+        summary: title,
+        start: { dateTime: start },
+        end: { dateTime: end },
+      };
+      if (description) {
+        eventResource.description = description;
+      }
+
+      // Call the Google Calendar API to insert the event
+      const calendarApi = google.calendar({ version: 'v3', auth });
+      const { data } = await calendarApi.events.insert({
+        calendarId,
+        requestBody: eventResource,
+      });
+
+      // Flush the event cache so the next GET /events includes the new event
+      cache.flushAll();
+
+      // Return the created event in our standard format
+      res.status(201).json({
+        id: data.id,
+        calendarId,
+        title: data.summary || '(No title)',
+        start: data.start.dateTime || data.start.date,
+        end: data.end.dateTime || data.end.date,
+        allDay: !data.start.dateTime,
+        location: data.location || null,
+        description: data.description || null,
+      });
+    } catch (error) {
+      console.error('Event create error:', error.message, error.response?.data || '');
+      res.status(500).json({ error: 'Failed to create event', detail: error.message });
+    }
+  });
+
+  /**
    * PATCH /api/calendar/events/:id
    *
    * Updates an existing event on Google Calendar. Called when the user

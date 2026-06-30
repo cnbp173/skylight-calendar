@@ -137,6 +137,44 @@ export function useCalendarData(authenticated, weekOffset = 0) {
   }, [events]);
 
   /**
+   * Creates a new event on the server and adds it to local state.
+   * Used by the "Add New Appointment" dialog.
+   *
+   * Strategy:
+   *   1. Send POST request to server (which creates the event on Google Calendar)
+   *   2. On success, add the returned event to local state
+   *   3. On failure, surface the error (no rollback needed since nothing was added yet)
+   *
+   * @param {object} eventData - { calendarId, title, start, end, description }
+   * @returns {Promise<boolean>} True if creation succeeded, false otherwise
+   */
+  const createEvent = useCallback(async (eventData) => {
+    try {
+      const res = await fetch('/api/calendar/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(eventData),
+      });
+
+      if (!res.ok) {
+        console.error('Failed to create event:', await res.text());
+        return false;
+      }
+
+      // Add the newly created event to local state so it appears immediately
+      const created = await res.json();
+      setEvents((current) => [...current, created].sort((a, b) =>
+        new Date(a.start) - new Date(b.start)
+      ));
+
+      return true;
+    } catch (e) {
+      console.error('Failed to create event:', e);
+      return false;
+    }
+  }, []);
+
+  /**
    * Initial load and periodic refresh.
    * Fetches calendars then events immediately, then sets up a 5-minute
    * interval to keep the display fresh without manual interaction.
@@ -156,7 +194,7 @@ export function useCalendarData(authenticated, weekOffset = 0) {
     return () => clearInterval(interval);
   }, [authenticated, fetchCalendars, fetchEvents]);
 
-  return { calendars, events, loading, updateEvent };
+  return { calendars, events, loading, updateEvent, createEvent };
 }
 
 /**
