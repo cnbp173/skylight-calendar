@@ -78,30 +78,15 @@ export default function WeekView({ events, calendars, loading, weekOffset = 0, o
   // Group events into buckets by day for rendering in the correct column
   const eventsByDay = groupEventsByDay(eventsWithPreviews, days);
 
-  // Show a loading indicator while the first fetch is in progress
-  if (loading) {
-    return (
-      <div style={styles.loading}>
-        <p style={styles.loadingText}>Loading calendar...</p>
-      </div>
-    );
-  }
-
-  // Generate the array of hour labels for the time gutter
-  const hours = [];
-  for (let h = DAY_START_HOUR; h <= DAY_END_HOUR; h++) {
-    hours.push(h);
-  }
-
   /**
    * Called when the user starts dragging an event.
    * Stores the active event so we can render a drag overlay
    * (a floating copy of the event card that follows the cursor).
    */
-  const handleDragStart = (event) => {
+  const handleDragStart = useCallback((event) => {
     const draggedEvent = events.find((e) => e.id === event.active.id);
     setActiveEvent(draggedEvent);
-  };
+  }, [events]);
 
   /**
    * Called when the user drops an event onto a day column.
@@ -111,7 +96,7 @@ export default function WeekView({ events, calendars, loading, weekOffset = 0, o
    * If the drop target is not a valid day column, the drag is cancelled
    * (event snaps back to its original position).
    */
-  const handleDragEnd = (event) => {
+  const handleDragEnd = useCallback((event) => {
     const { active, over } = event;
     setActiveEvent(null);
 
@@ -149,7 +134,7 @@ export default function WeekView({ events, calendars, loading, weekOffset = 0, o
       start: newStart.toISOString(),
       end: newEnd.toISOString(),
     });
-  };
+  }, [events, onEventUpdate]);
 
   /**
    * Called continuously during a resize drag for live visual feedback.
@@ -181,6 +166,21 @@ export default function WeekView({ events, calendars, loading, weekOffset = 0, o
     // Persist the new end time
     onEventUpdate(eventId, updates);
   }, [onEventUpdate]);
+
+  // Show a loading indicator while the first fetch is in progress
+  if (loading) {
+    return (
+      <div style={styles.loading}>
+        <p style={styles.loadingText}>Loading calendar...</p>
+      </div>
+    );
+  }
+
+  // Generate the array of hour labels for the time gutter
+  const hours = [];
+  for (let h = DAY_START_HOUR; h <= DAY_END_HOUR; h++) {
+    hours.push(h);
+  }
 
   return (
     <DndContext

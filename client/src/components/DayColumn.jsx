@@ -54,17 +54,20 @@ export default function DayColumn({ date, events, isToday, colorMap, dayStartHou
    * minutes for the end-time calculation.
    */
   useEffect(() => {
-    if (timeGridRef.current) {
-      const updateHeight = () => {
-        setGridHeight(timeGridRef.current.clientHeight);
-      };
-      updateHeight();
+    const node = timeGridRef.current;
+    if (!node) return;
 
-      // Re-measure if the window resizes (TV resolution change, dev tools, etc.)
-      const observer = new ResizeObserver(updateHeight);
-      observer.observe(timeGridRef.current);
-      return () => observer.disconnect();
-    }
+    const updateHeight = () => {
+      if (timeGridRef.current) {
+        setGridHeight(timeGridRef.current.clientHeight);
+      }
+    };
+    updateHeight();
+
+    // Re-measure if the window resizes (TV resolution change, dev tools, etc.)
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(node);
+    return () => observer.disconnect();
   }, []);
 
   /**
