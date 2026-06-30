@@ -1,9 +1,10 @@
 /**
  * Calendar Routes — Unit Tests
  *
- * Tests the three calendar endpoints:
- *   GET  /api/calendar/list       - List connected calendars
- *   GET  /api/calendar/events     - Fetch events for a time range
+ * Tests the four calendar endpoints:
+ *   GET   /api/calendar/list       - List connected calendars
+ *   GET   /api/calendar/events     - Fetch events for a time range
+ *   POST  /api/calendar/events     - Create a new event
  *   PATCH /api/calendar/events/:id - Update an event (reschedule/rename)
  *
  * Uses vitest for test runner and supertest for HTTP assertions.
@@ -36,21 +37,23 @@ vi.mock('googleapis', () => {
   const mockList = vi.fn();
   const mockEventsList = vi.fn();
   const mockEventsPatch = vi.fn();
+  const mockEventsInsert = vi.fn();
   return {
     google: {
       calendar: () => ({
         calendarList: { list: mockList },
-        events: { list: mockEventsList, patch: mockEventsPatch },
+        events: { list: mockEventsList, patch: mockEventsPatch, insert: mockEventsInsert },
       }),
     },
     __mockCalendarListList: mockList,
     __mockEventsList: mockEventsList,
     __mockEventsPatch: mockEventsPatch,
+    __mockEventsInsert: mockEventsInsert,
   };
 });
 
 import { getAuthenticatedClient } from '../src/routes/auth.js';
-import { __mockCalendarListList, __mockEventsList, __mockEventsPatch } from 'googleapis';
+import { __mockCalendarListList, __mockEventsList, __mockEventsPatch, __mockEventsInsert } from 'googleapis';
 
 /**
  * Helper to create a fresh Express app with the calendar router mounted.
@@ -429,6 +432,137 @@ describe('Calendar Routes', () => {
 
       expect(res.status).toBe(500);
       expect(res.body.error).toBe('Failed to update event');
+    });
+  });
+
+  describe('POST /api/calendar/events', () => {
+    it('returns 401 when not authenticated', async () => {
+      getAuthenticatedClient.mockReturnValue(null);
+      const app = createApp();
+
+      const res = await request(app)
+        .post('/api/calendar/events')
+        .send({
+          calendarId: 'cal1',
+          title: 'New Event',
+          start: '2026-06-30T10:00:00Z',
+          end: '2026-06-30T11:00:00Z',
+        });
+
+      expect(res.status).toBe(401);
+      expect(res.body.error).toBe('Not authenticated');
+    });
+
+    it('returns 400 when calendarId is missing', async () => {
+      getAuthenticatedClient.mockReturnValue({});
+      const app = createApp();
+
+      const res = await request(app)
+        .post('/api/calendar/events')
+        .send({
+          title: 'New Event',
+          start: '2026-06-30T10:00:00Z',
+          end: '2026-06-30T11:00:00Z',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('calendarId is required');
+    });
+
+    it('returns 400 when title is missing', async () => {
+      getAuthenticatedClient.mockReturnValue({});
+      const app = createApp();
+
+      const res = await request(app)
+        .post('/api/calendar/events')
+        .send({
+          calendarId: 'cal1',
+          start: '2026-06-30T10:00:00Z',
+          end: '2026-06-30T11:00:00Z',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('title is required');
+    });
+
+    it('returns 400 when start/end are missing', async () => {
+      getAuthenticatedClient.mockReturnValue({});
+      const app = createApp();
+
+      const res = await request(app)
+        .post('/api/calendar/events')
+        .send({
+          calendarId: 'cal1',
+          title: 'New Event',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('start and end are required');
+    });
+
+    it('creates an event via Google Calendar API and returns 201', async () => {
+      getAuthenticatedClient.mockReturnValue({});
+      __mockEventsInsert.mockResolvedValue({
+        data: {
+          id: 'new-evt-1',
+          summary: 'Team Lunch',
+          start: { dateTime: '2026-06-30T12:00:00Z' },
+          end: { dateTime: '2026-06-30T13:00:00Z' },
+          location: '',
+          description: 'Celebrate the sprint',
+        },
+      });
+      const app = createApp();
+
+      const res = await request(app)
+        .post('/api/calendar/events')
+        .send({
+          calendarId: 'cal1',
+          title: 'Team Lunch',
+          start: '2026-06-30T12:00:00Z',
+          end: '2026-06-30T13:00:00Z',
+          description: 'Celebrate the sprint',
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body).toMatchObject({
+        id: 'new-evt-1',
+        calendarId: 'cal1',
+        title: 'Team Lunch',
+        start: '2026-06-30T12:00:00Z',
+        end: '2026-06-30T13:00:00Z',
+        allDay: false,
+        description: 'Celebrate the sprint',
+      });
+
+      // Verify the API was called with the correct parameters
+      expect(__mockEventsInsert).toHaveBeenCalledWith({
+        calendarId: 'cal1',
+        requestBody: {
+          summary: 'Team Lunch',
+          start: { dateTime: '2026-06-30T12:00:00Z' },
+          end: { dateTime: '2026-06-30T13:00:00Z' },
+          description: 'Celebrate the sprint',
+        },
+      });
+    });
+
+    it('returns 500 when Google API fails', async () => {
+      getAuthenticatedClient.mockReturnValue({});
+      __mockEventsInsert.mockRejectedValue(new Error('API error'));
+      const app = createApp();
+
+      const res = await request(app)
+        .post('/api/calendar/events')
+        .send({
+          calendarId: 'cal1',
+          title: 'Will Fail',
+          start: '2026-06-30T10:00:00Z',
+          end: '2026-06-30T11:00:00Z',
+        });
+
+      expect(res.status).toBe(500);
+      expect(res.body.error).toBe('Failed to create event');
     });
   });
 });

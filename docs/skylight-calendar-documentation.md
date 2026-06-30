@@ -25,6 +25,7 @@ The display is designed to be always-on and glanceable — large typography, col
 - **Drag-and-Drop Rescheduling**: Move events between days within the current week by dragging with a mouse/touchpad
 - **Double-Click Edit Dialog**: Modify event title, date, time, and description — supports rescheduling to dates outside the visible week
 - **Google Calendar Write-Back**: Changes sync back to Google Calendar in real-time
+- **Create New Appointments**: Add events directly from the display and assign them to any connected calendar
 - **Multi-Calendar Support**: Sync multiple Google Calendars with distinct colors per calendar (great for families)
 - **Calendar Legend**: Color-coded legend at the top showing each calendar's name and color for easy identification
 - **Weather Widget**: Current temperature and conditions displayed in the header
@@ -425,6 +426,21 @@ For more comprehensive edits, or to reschedule to a date outside the visible wee
 - **Escape**: Close without saving
 - **Enter** (in any field): Submit the form
 
+## Adding New Appointments
+
+To create a new appointment from the calendar display:
+
+1. Click the **"+ Add New Appointment"** button (located to the right of the calendar legend)
+2. The add dialog opens with these fields:
+   - **Title**: The appointment name (required)
+   - **Calendar**: Select which calendar to add the event to (dropdown shows all connected calendars)
+   - **Date**: Defaults to today
+   - **Start Time**: Defaults to the next full hour
+   - **End Time**: Defaults to one hour after start
+   - **Description**: Optional notes
+3. Click **"Create Appointment"** to save
+4. The event is immediately created on Google Calendar and appears on the display
+
 \newpage
 
 # API Reference
@@ -562,6 +578,53 @@ Updates an existing event on Google Calendar. Called when the user drags an even
 | 500 | Google Calendar API error |
 
 **Note:** Demo events (IDs starting with "demo-") are handled locally and don't call the Google API.
+
+### POST /api/calendar/events
+
+Creates a new event on Google Calendar.
+
+**Request Body (JSON):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| calendarId | string | Yes | Which calendar to create the event on |
+| title | string | Yes | Event title/summary |
+| start | ISO string | Yes | Start date-time |
+| end | ISO string | Yes | End date-time |
+| description | string | No | Event description |
+
+**Example Request:**
+```json
+{
+  "calendarId": "primary",
+  "title": "Doctor Appointment",
+  "start": "2026-07-01T14:00:00Z",
+  "end": "2026-07-01T15:00:00Z",
+  "description": "Annual checkup"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": "newevt123",
+  "calendarId": "primary",
+  "title": "Doctor Appointment",
+  "start": "2026-07-01T14:00:00Z",
+  "end": "2026-07-01T15:00:00Z",
+  "allDay": false,
+  "location": null,
+  "description": "Annual checkup"
+}
+```
+
+**Error Responses:**
+
+| Status | Cause |
+|--------|-------|
+| 400 | Missing calendarId, title, or start/end |
+| 401 | Not authenticated |
+| 500 | Google Calendar API error |
 
 ## Weather Endpoint
 

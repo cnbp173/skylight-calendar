@@ -165,4 +165,55 @@ describe('useCalendarData', () => {
     expect(success).toBe(false);
     expect(result.current.events[0].title).toBe('Original');
   });
+
+  it('provides a createEvent function that adds the new event to the list', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([{ id: 'cal1', summary: 'Work', color: '#4285f4', primary: true }]),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([
+          { id: 'evt1', calendarId: 'cal1', title: 'Existing', start: '2026-06-28T09:00:00Z', end: '2026-06-28T10:00:00Z' },
+        ]),
+      });
+
+    const { result } = renderHook(() => useCalendarData(true, 0));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    // Mock a successful POST response for creating an event
+    const newEvent = {
+      id: 'evt2',
+      calendarId: 'cal1',
+      title: 'New Meeting',
+      start: '2026-06-28T11:00:00Z',
+      end: '2026-06-28T12:00:00Z',
+      description: 'Planning session',
+    };
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(newEvent),
+    });
+
+    let success;
+    await act(async () => {
+      success = await result.current.createEvent({
+        calendarId: 'cal1',
+        title: 'New Meeting',
+        start: '2026-06-28T11:00:00Z',
+        end: '2026-06-28T12:00:00Z',
+        description: 'Planning session',
+      });
+    });
+
+    expect(success).toBe(true);
+    expect(result.current.events).toHaveLength(2);
+    expect(result.current.events[1].title).toBe('New Meeting');
+    expect(result.current.events[1].id).toBe('evt2');
+  });
 });
