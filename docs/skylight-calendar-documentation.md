@@ -31,6 +31,7 @@ The display is designed to be always-on and glanceable — large typography, col
 - **Calendar Legend**: Color-coded legend at the top showing each calendar's name and color for easy identification
 - **Weather Widget**: Current temperature and conditions displayed in the header
 - **Auto-Refresh**: Events update every 5 minutes, weather every 30 minutes
+- **WiFi Setup Screen**: On first boot without internet, prompts for WiFi credentials via an on-screen interface
 - **iPazzPort Touchpad Optimized**: Visible cursor, large hit targets (44px+), keyboard navigation support
 - **Kiosk Mode**: Full-screen display with no screen blanking, auto-start on boot
 - **TV-Optimized**: Designed for 1080p displays with large, readable typography
@@ -121,6 +122,7 @@ skylight-calendar/
 │   │   │   ├── EditEventDialog.jsx  # Modal for editing events
 │   │   │   ├── AddEventDialog.jsx   # Modal for creating new appointments
 │   │   │   ├── WeatherWidget.jsx
+│   │   │   ├── WifiSetupScreen.jsx  # WiFi network selection and connection
 │   │   │   └── SetupScreen.jsx
 │   │   └── hooks/
 │   │       ├── useCalendarData.js
@@ -314,6 +316,7 @@ sudo reboot
 After the Pi reboots:
 
 1. The TV should show Chromium in full-screen with the Skylight Calendar setup screen
+   - **Note:** If the Pi has no Ethernet connection and no saved WiFi credentials, a WiFi setup screen will appear first. Use the iPazzPort keyboard to select your network and enter the password. Once connected, the calendar setup screen will load automatically.
 2. From any device on the same network, open a browser to `http://<pi-ip>:3001`
 3. Click "Connect Google Calendar"
 4. Complete the Google sign-in flow
@@ -465,6 +468,44 @@ To create a new appointment from the calendar display:
 \newpage
 
 # API Reference
+
+## Network Endpoints (WiFi Setup)
+
+### GET /api/network/status
+Checks internet connectivity and current WiFi network.
+
+**Response:**
+```json
+{ "connected": true, "ssid": "MyNetwork" }
+```
+
+### GET /api/network/scan
+Scans for available WiFi networks.
+
+**Response:**
+```json
+[
+  { "ssid": "HomeNetwork", "signal": 85, "secured": true },
+  { "ssid": "CoffeeShop", "signal": 42, "secured": false }
+]
+```
+
+### POST /api/network/connect
+Connects to a WiFi network.
+
+**Request Body:**
+```json
+{ "ssid": "HomeNetwork", "password": "mypassword123" }
+```
+
+**Response:** `{ "success": true }`
+
+**Error Responses:**
+
+| Status | Cause |
+|--------|-------|
+| 400 | Missing ssid |
+| 500 | Connection failed (wrong password, out of range, etc.) |
 
 ## Authentication Endpoints
 
@@ -861,6 +902,10 @@ const url = `...&units=metric&...`;
 A: Verify your OpenWeatherMap API key is active and that you've subscribed to the One Call API 4.0. New API keys can take a few minutes to activate.
 
 ## Raspberry Pi
+
+**Q: What if my Pi has no internet on first boot?**
+
+A: The calendar will show a WiFi setup screen. Use the iPazzPort keyboard to select your network and enter the password. The credentials are saved and persist across reboots.
 
 **Q: Can I use a Pi Zero 2 W?**
 

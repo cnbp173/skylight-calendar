@@ -106,6 +106,9 @@ sudo reboot
 ### First-Time Authentication
 
 After the Pi boots:
+
+**Note:** If the Pi is not connected via Ethernet and has no saved WiFi credentials, a WiFi setup screen will appear on the display before the Google auth prompt. Use the iPazzPort keyboard to select your network and enter the password. Once connected, the setup flow will continue automatically.
+
 1. From another computer on the same network, navigate to `http://<pi-ip>:3001`
 2. Click "Connect Google Calendar"
 3. Complete the Google OAuth flow (grants both read AND write access)
