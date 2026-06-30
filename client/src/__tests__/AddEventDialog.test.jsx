@@ -139,4 +139,32 @@ describe('AddEventDialog', () => {
     expect(options[0]).toHaveTextContent('Work');
     expect(options[1]).toHaveTextContent('Family');
   });
+
+  it('auto-sets end time to 30 minutes after start when start time changes', () => {
+    render(<AddEventDialog calendars={mockCalendars} onCreate={onCreate} onClose={onClose} />);
+
+    const inputs = document.querySelectorAll('input[type="time"]');
+    const startInput = inputs[0];
+
+    fireEvent.change(startInput, { target: { value: '09:00' } });
+
+    // End time should automatically become 09:30
+    expect(screen.getByDisplayValue('09:30')).toBeInTheDocument();
+  });
+
+  it('prevents end time from being before start time', () => {
+    render(<AddEventDialog calendars={mockCalendars} onCreate={onCreate} onClose={onClose} />);
+
+    const inputs = document.querySelectorAll('input[type="time"]');
+    const startInput = inputs[0];
+    const endInput = inputs[1];
+
+    // Set start to 15:00 (end becomes 15:30)
+    fireEvent.change(startInput, { target: { value: '15:00' } });
+    // Try to set end before start
+    fireEvent.change(endInput, { target: { value: '14:00' } });
+
+    // Should snap to start + 30 = 15:30
+    expect(endInput.value).toBe('15:30');
+  });
 });

@@ -421,6 +421,10 @@ For more comprehensive edits, or to reschedule to a date outside the visible wee
 4. Click "Save Changes" to push the update to Google Calendar
 5. Click "Cancel" or press Escape to close without saving
 
+**Time validation:**
+- When you change the start time, the end time automatically adjusts to 30 minutes later
+- You cannot set an end time earlier than the start time — it snaps to start + 30 minutes
+
 **Keyboard shortcuts in the dialog:**
 - **Tab**: Move between fields
 - **Escape**: Close without saving

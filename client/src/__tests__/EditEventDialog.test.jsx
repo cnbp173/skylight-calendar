@@ -144,4 +144,31 @@ describe('EditEventDialog', () => {
     const textarea = screen.getByPlaceholderText('Add a description...');
     expect(textarea.value).toBe('');
   });
+
+  it('auto-sets end time to 30 minutes after start when start time changes', () => {
+    render(<EditEventDialog event={mockEvent} onSave={onSave} onClose={onClose} />);
+
+    const startInput = screen.getAllByDisplayValue(/:/)[0];
+    fireEvent.change(startInput, { target: { value: '10:00' } });
+
+    // End time should automatically become 10:30
+    const endInput = screen.getAllByRole('textbox').length; // fallback: check by value
+    expect(screen.getByDisplayValue('10:30')).toBeInTheDocument();
+  });
+
+  it('prevents end time from being before start time', () => {
+    render(<EditEventDialog event={mockEvent} onSave={onSave} onClose={onClose} />);
+
+    // First set start to 14:00 (end becomes 14:30)
+    const inputs = document.querySelectorAll('input[type="time"]');
+    const startInput = inputs[0];
+    const endInput = inputs[1];
+
+    fireEvent.change(startInput, { target: { value: '14:00' } });
+    // Try to set end time before start
+    fireEvent.change(endInput, { target: { value: '13:00' } });
+
+    // End should snap to start + 30 min = 14:30
+    expect(endInput.value).toBe('14:30');
+  });
 });
