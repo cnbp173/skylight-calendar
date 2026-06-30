@@ -46,6 +46,27 @@ export default function AddEventDialog({ calendars, onCreate, onClose }) {
   const titleRef = useRef(null);
 
   /**
+   * When the start time changes, auto-set end time to 30 minutes later.
+   * This ensures the user always has a valid duration by default.
+   */
+  const handleStartTimeChange = (newStartTime) => {
+    setStartTime(newStartTime);
+    setEndTime(addMinutesToTime(newStartTime, 30));
+  };
+
+  /**
+   * When the end time changes, enforce that it cannot be before the start time.
+   * If the user picks an end time earlier than start, snap it to start + 30 min.
+   */
+  const handleEndTimeChange = (newEndTime) => {
+    if (newEndTime <= startTime) {
+      setEndTime(addMinutesToTime(startTime, 30));
+    } else {
+      setEndTime(newEndTime);
+    }
+  };
+
+  /**
    * Auto-focus the title field when the dialog opens.
    */
   useEffect(() => {
@@ -153,7 +174,7 @@ export default function AddEventDialog({ calendars, onCreate, onClose }) {
               <input
                 type="time"
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
+                onChange={(e) => handleStartTimeChange(e.target.value)}
                 style={styles.input}
                 required
               />
@@ -163,7 +184,7 @@ export default function AddEventDialog({ calendars, onCreate, onClose }) {
               <input
                 type="time"
                 value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
+                onChange={(e) => handleEndTimeChange(e.target.value)}
                 style={styles.input}
                 required
               />
@@ -239,6 +260,22 @@ function getNextHourPlusOneString() {
   const d = new Date();
   const nextHour = d.getHours() + 2;
   return `${String(nextHour).padStart(2, '0')}:00`;
+}
+
+/**
+ * Adds a given number of minutes to a time string (HH:MM format).
+ * Caps at 23:59 to prevent overflow into the next day.
+ *
+ * @param {string} time - Time in HH:MM format
+ * @param {number} minutes - Minutes to add
+ * @returns {string} New time in HH:MM format
+ */
+function addMinutesToTime(time, minutes) {
+  const [h, m] = time.split(':').map(Number);
+  const totalMinutes = Math.min(h * 60 + m + minutes, 23 * 60 + 59);
+  const newH = Math.floor(totalMinutes / 60);
+  const newM = totalMinutes % 60;
+  return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
 }
 
 /**
