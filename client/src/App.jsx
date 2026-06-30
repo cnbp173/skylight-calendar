@@ -2,15 +2,16 @@
  * App — Root Component
  *
  * The top-level component that orchestrates the Skylight Calendar UI.
- * Handles authentication state, week navigation, and passes data/callbacks
- * down to child components.
+ * Manages the startup sequence:
  *
- * Layout (top to bottom):
+ *   1. Check network connectivity — if no internet, show WiFi setup screen
+ *   2. Check authentication — if no Google account, show OAuth setup screen
+ *   3. Show the calendar with all interactive features
+ *
+ * Layout (when fully loaded):
  *   1. Header — shows week range, current time, navigation buttons, weather
  *   2. CalendarLegend + "Add New Appointment" button
  *   3. WeekView — the 7-day grid showing all events (with drag-and-drop)
- *
- * If the user hasn't connected Google Calendar yet, shows SetupScreen instead.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -19,12 +20,16 @@ import WeatherWidget from './components/WeatherWidget.jsx';
 import Header from './components/Header.jsx';
 import CalendarLegend from './components/CalendarLegend.jsx';
 import SetupScreen from './components/SetupScreen.jsx';
+import WifiSetupScreen from './components/WifiSetupScreen.jsx';
 import EditEventDialog from './components/EditEventDialog.jsx';
 import AddEventDialog from './components/AddEventDialog.jsx';
 import { useCalendarData } from './hooks/useCalendarData.js';
 import { useWeatherData } from './hooks/useWeatherData.js';
 
 export default function App() {
+  // null = still checking, true = online, false = no internet
+  const [networkConnected, setNetworkConnected] = useState(null);
+
   // null = still checking auth status, true/false = determined
   const [authenticated, setAuthenticated] = useState(null);
 
@@ -42,20 +47,61 @@ export default function App() {
   const { weather } = useWeatherData();
 
   /**
-   * On mount, check if the user has already connected their Google account.
-   * The server returns { authenticated: true/false } based on whether
-   * tokens exist on disk.
+   * On mount, check network connectivity first.
+   * If connected, proceed to check auth status.
+   * If not connected, show the WiFi setup screen.
    */
   useEffect(() => {
+    checkNetworkAndAuth();
+  }, []);
+
+  /**
+   * Checks network status, then auth status if online.
+   * Called on mount and after WiFi connection succeeds.
+   */
+  const checkNetworkAndAuth = async () => {
+    try {
+      const netRes = await fetch('/api/network/status');
+      const netData = await netRes.json();
+
+      if (netData.connected) {
+        setNetworkConnected(true);
+        // Now check Google auth status
+        const authRes = await fetch('/api/auth/status');
+        const authData = await authRes.json();
+        setAuthenticated(authData.authenticated);
+      } else {
+        setNetworkConnected(false);
+      }
+    } catch {
+      // If the network endpoint itself fails, we're likely in dev mode
+      // (no nmcli available) — assume connected and check auth directly
+      setNetworkConnected(true);
+      try {
+        const authRes = await fetch('/api/auth/status');
+        const authData = await authRes.json();
+        setAuthenticated(authData.authenticated);
+      } catch {
+        setAuthenticated(false);
+      }
+    }
+  };
+
+  /**
+   * Called when the WiFi setup screen successfully connects.
+   * Re-checks auth to proceed to the next step.
+   */
+  const handleWifiConnected = () => {
+    setNetworkConnected(true);
+    // Now check if Google Calendar is already authenticated
     fetch('/api/auth/status')
       .then((r) => r.json())
       .then((data) => setAuthenticated(data.authenticated))
       .catch(() => setAuthenticated(false));
-  }, []);
+  };
 
   /**
    * Opens the edit dialog for a given event.
-   * Called when the user double-clicks an event card.
    */
   const handleEditEvent = (event) => {
     setEditingEvent(event);
@@ -63,7 +109,6 @@ export default function App() {
 
   /**
    * Saves changes from the edit dialog.
-   * Delegates to updateEvent which handles optimistic updates and server sync.
    */
   const handleSaveEvent = async (eventId, updates) => {
     const success = await updateEvent(eventId, updates);
@@ -75,7 +120,6 @@ export default function App() {
 
   /**
    * Creates a new event from the add dialog.
-   * Delegates to createEvent which posts to the server and adds to local state.
    */
   const handleCreateEvent = async (eventData) => {
     const success = await createEvent(eventData);
@@ -85,7 +129,13 @@ export default function App() {
     return success;
   };
 
-  // Show nothing while checking auth (prevents flash of wrong screen)
+  // Show nothing while checking initial state (prevents flash)
+  if (networkConnected === null) return null;
+
+  // No internet — show WiFi setup splash screen
+  if (!networkConnected) return <WifiSetupScreen onConnected={handleWifiConnected} />;
+
+  // Still checking auth after network is confirmed
   if (authenticated === null) return null;
 
   // Not authenticated — show the Google Calendar connection prompt
@@ -147,8 +197,6 @@ export default function App() {
 
 /**
  * Root container styles.
- * Uses flexbox column layout to stack header, legend, and week view.
- * The padding provides breathing room on the TV display.
  */
 const styles = {
   container: {

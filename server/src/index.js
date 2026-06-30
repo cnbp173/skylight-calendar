@@ -22,6 +22,7 @@ import { fileURLToPath } from 'url';
 import { createCalendarRouter } from './routes/calendar.js';
 import { createWeatherRouter } from './routes/weather.js';
 import { createAuthRouter } from './routes/auth.js';
+import { createNetworkRouter } from './routes/network.js';
 
 // Load environment variables from .env at the project root.
 // This file contains GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, etc.
@@ -38,6 +39,7 @@ app.use(cors());
 app.use(express.json());
 
 // Mount API route groups
+app.use('/api/network', createNetworkRouter());
 app.use('/api/auth', createAuthRouter());
 app.use('/api/calendar', createCalendarRouter());
 app.use('/api/weather', createWeatherRouter());
