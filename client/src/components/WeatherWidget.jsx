@@ -1,5 +1,25 @@
+/**
+ * WeatherWidget Component
+ *
+ * Displays weather information in the header area, organized into three sections:
+ *   1. Current conditions — large icon and temperature with description
+ *   2. Today's periods — morning/afternoon/evening/night mini forecast
+ *   3. Daily forecast — 7-day outlook with high/low temperatures
+ *
+ * Weather icons are emoji-based (no external icon library needed), chosen
+ * based on the condition string from the OpenWeatherMap API.
+ *
+ * Returns null if no weather data is available (loading or API error).
+ *
+ * Props:
+ *   @param {object} weather - Weather data with { current, periods, daily } structure
+ */
+
 import React from 'react';
 
+/**
+ * Maps OpenWeatherMap condition names to emoji icons for daytime display.
+ */
 const WEATHER_ICONS = {
   Clear: '☀️',
   Clouds: '☁️',
@@ -12,10 +32,18 @@ const WEATHER_ICONS = {
   Haze: '🌫️',
 };
 
+/**
+ * Night-specific icon overrides (only Clear has a distinct night variant).
+ */
 const NIGHT_ICONS = {
   Clear: '🌙',
 };
 
+/**
+ * Display labels and keys for today's period breakdown.
+ * The key maps to the period object in the weather data,
+ * the label is what's shown in the UI.
+ */
 const PERIOD_LABELS = [
   { key: 'morning', label: 'Morn' },
   { key: 'afternoon', label: 'Noon' },
@@ -23,11 +51,27 @@ const PERIOD_LABELS = [
   { key: 'night', label: 'Night' },
 ];
 
+/**
+ * Returns the appropriate weather emoji for a given condition.
+ * Uses night variants when applicable (only for the "night" period).
+ *
+ * @param {string} condition - The weather condition (e.g., "Clear", "Rain")
+ * @param {boolean} isNight - Whether to use night-specific icons
+ * @returns {string} Emoji character
+ */
 function getIcon(condition, isNight = false) {
   if (isNight && NIGHT_ICONS[condition]) return NIGHT_ICONS[condition];
   return WEATHER_ICONS[condition] || '🌤️';
 }
 
+/**
+ * Formats day names for the 7-day forecast.
+ * The first day is always "Today", subsequent days show abbreviated names.
+ *
+ * @param {string} dateStr - ISO date string
+ * @param {number} index - Day index in the forecast array (0 = today)
+ * @returns {string} Display label (e.g., "Today", "Mon", "Tue")
+ */
 function getDayName(dateStr, index) {
   if (index === 0) return 'Today';
   const d = new Date(dateStr);
@@ -35,6 +79,7 @@ function getDayName(dateStr, index) {
 }
 
 export default function WeatherWidget({ weather }) {
+  // Don't render if weather data hasn't loaded yet
   if (!weather) return null;
 
   const { current, periods, daily } = weather;
@@ -42,6 +87,7 @@ export default function WeatherWidget({ weather }) {
 
   return (
     <div style={styles.container}>
+      {/* Current conditions section — prominent display */}
       <div style={styles.currentSection}>
         <span style={styles.currentIcon}>{currentIcon}</span>
         <div style={styles.currentInfo}>
@@ -50,6 +96,7 @@ export default function WeatherWidget({ weather }) {
         </div>
       </div>
 
+      {/* Today's period breakdown (morning through night) */}
       {periods && (
         <div style={styles.periodsSection}>
           {PERIOD_LABELS.map(({ key, label }) => {
@@ -66,6 +113,7 @@ export default function WeatherWidget({ weather }) {
         </div>
       )}
 
+      {/* 7-day daily forecast */}
       {daily && daily.length > 0 && (
         <div style={styles.forecastSection}>
           {daily.map((day, i) => (
@@ -82,6 +130,7 @@ export default function WeatherWidget({ weather }) {
   );
 }
 
+/** Component styles */
 const styles = {
   container: {
     display: 'flex',

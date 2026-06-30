@@ -1,3 +1,16 @@
+/**
+ * SetupScreen Component
+ *
+ * Shown when the user hasn't yet connected their Google Calendar.
+ * Provides a single call-to-action button that starts the OAuth flow
+ * by navigating to the /api/auth/login endpoint.
+ *
+ * This is typically shown once during initial setup on the Raspberry Pi.
+ * The user connects from a phone/laptop browser (since the Pi is headless
+ * or using the iPazzPort keyboard to navigate), and after OAuth completes,
+ * this screen is replaced by the calendar view.
+ */
+
 import React from 'react';
 
 export default function SetupScreen() {
@@ -6,9 +19,12 @@ export default function SetupScreen() {
       <div style={styles.card}>
         <h1 style={styles.title}>Skylight Calendar</h1>
         <p style={styles.subtitle}>Connect your Google Calendar to get started</p>
+
+        {/* The link navigates to the server's OAuth initiation endpoint */}
         <a href="/api/auth/login" style={styles.button}>
           Connect Google Calendar
         </a>
+
         <p style={styles.hint}>
           After connecting, the calendar will automatically sync and display your events.
         </p>
@@ -17,6 +33,7 @@ export default function SetupScreen() {
   );
 }
 
+/** Component styles */
 const styles = {
   container: {
     height: '100%',
@@ -54,6 +71,8 @@ const styles = {
     fontWeight: 500,
     textDecoration: 'none',
     transition: 'background 0.2s',
+    // Large hit target for touchpad interaction
+    minHeight: '44px',
   },
   hint: {
     fontSize: '13px',

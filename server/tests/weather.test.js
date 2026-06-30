@@ -1,3 +1,13 @@
+/**
+ * Weather Routes — Unit Tests
+ *
+ * Tests the weather endpoint behavior:
+ *   - Returns demo data when API key/coordinates aren't configured
+ *   - Fetches real data from OpenWeatherMap when configured
+ *   - Handles API errors gracefully
+ *   - Rounds temperature values to whole numbers
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
@@ -13,6 +23,9 @@ vi.mock('node-cache', () => {
 
 import { createWeatherRouter } from '../src/routes/weather.js';
 
+/**
+ * Helper to create a fresh Express app with the weather router.
+ */
 function createApp() {
   const app = express();
   app.use('/api/weather', createWeatherRouter());
@@ -32,7 +45,7 @@ describe('Weather Routes', () => {
   });
 
   describe('GET /api/weather/current', () => {
-    it('returns 400 when weather is not configured', async () => {
+    it('returns demo data when weather is not configured', async () => {
       delete process.env.OPENWEATHER_API_KEY;
       delete process.env.WEATHER_LAT;
       delete process.env.WEATHER_LON;
@@ -40,11 +53,15 @@ describe('Weather Routes', () => {
       const app = createApp();
       const res = await request(app).get('/api/weather/current');
 
-      expect(res.status).toBe(400);
-      expect(res.body.error).toBe('Weather not configured');
+      // Should return 200 with demo data (not an error)
+      expect(res.status).toBe(200);
+      expect(res.body.current).toBeDefined();
+      expect(res.body.current.temp).toBe(78);
+      expect(res.body.current.condition).toBe('Clear');
+      expect(res.body.daily).toHaveLength(7);
     });
 
-    it('returns 400 when only API key is set', async () => {
+    it('returns demo data when only API key is set (missing coordinates)', async () => {
       process.env.OPENWEATHER_API_KEY = 'test-key';
       delete process.env.WEATHER_LAT;
       delete process.env.WEATHER_LON;
@@ -52,10 +69,12 @@ describe('Weather Routes', () => {
       const app = createApp();
       const res = await request(app).get('/api/weather/current');
 
-      expect(res.status).toBe(400);
+      // Still returns demo data since coordinates are missing
+      expect(res.status).toBe(200);
+      expect(res.body.current.temp).toBe(78);
     });
 
-    it('fetches and transforms weather data', async () => {
+    it('fetches and transforms weather data when fully configured', async () => {
       process.env.OPENWEATHER_API_KEY = 'test-key';
       process.env.WEATHER_LAT = '40.7128';
       process.env.WEATHER_LON = '-74.006';
@@ -66,8 +85,16 @@ describe('Weather Routes', () => {
           weather: [{ main: 'Clear', icon: '01d', description: 'clear sky' }],
         },
         daily: [
-          { dt: 1719532800, temp: { max: 85.2, min: 68.1 }, weather: [{ main: 'Clear', icon: '01d' }] },
-          { dt: 1719619200, temp: { max: 82.0, min: 65.3 }, weather: [{ main: 'Clouds', icon: '02d' }] },
+          {
+            dt: 1719532800,
+            temp: { max: 85.2, min: 68.1, morn: 65, day: 78, eve: 72, night: 60 },
+            weather: [{ main: 'Clear', icon: '01d', description: 'clear sky' }],
+          },
+          {
+            dt: 1719619200,
+            temp: { max: 82.0, min: 65.3, morn: 62, day: 75, eve: 70, night: 58 },
+            weather: [{ main: 'Clouds', icon: '02d', description: 'scattered clouds' }],
+          },
         ],
       };
 
@@ -137,7 +164,11 @@ describe('Weather Routes', () => {
             weather: [{ main: 'Rain', icon: '10d', description: 'light rain' }],
           },
           daily: [
-            { dt: 1719532800, temp: { max: 79.51, min: 60.49 }, weather: [{ main: 'Rain', icon: '10d' }] },
+            {
+              dt: 1719532800,
+              temp: { max: 79.51, min: 60.49, morn: 62, day: 75, eve: 70, night: 58 },
+              weather: [{ main: 'Rain', icon: '10d', description: 'light rain' }],
+            },
           ],
         }),
       });

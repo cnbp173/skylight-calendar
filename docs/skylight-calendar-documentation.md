@@ -22,11 +22,15 @@ The display is designed to be always-on and glanceable — large typography, col
 ## Key Features
 
 - **Week View Display**: Seven-day grid showing all upcoming events at a glance
+- **Drag-and-Drop Rescheduling**: Move events between days within the current week by dragging with a mouse/touchpad
+- **Double-Click Edit Dialog**: Modify event title, date, time, and description — supports rescheduling to dates outside the visible week
+- **Google Calendar Write-Back**: Changes sync back to Google Calendar in real-time
 - **Multi-Calendar Support**: Sync multiple Google Calendars with distinct colors per calendar (great for families)
 - **Calendar Legend**: Color-coded legend at the top showing each calendar's name and color for easy identification
 - **Weather Widget**: Current temperature and conditions displayed in the header
 - **Auto-Refresh**: Events update every 5 minutes, weather every 30 minutes
-- **Kiosk Mode**: Full-screen display with no cursor, no screen blanking, auto-start on boot
+- **iPazzPort Touchpad Optimized**: Visible cursor, large hit targets (44px+), keyboard navigation support
+- **Kiosk Mode**: Full-screen display with no screen blanking, auto-start on boot
 - **TV-Optimized**: Designed for 1080p displays with large, readable typography
 - **Minimal Maintenance**: Once set up, runs unattended indefinitely
 
@@ -37,6 +41,7 @@ The display is designed to be always-on and glanceable — large typography, col
 | Hardware | Raspberry Pi 4 or 5 (2GB+ RAM recommended) |
 | OS | Raspberry Pi OS with Desktop (Bookworm or later) |
 | Display | Any TV or monitor with HDMI input (1080p recommended) |
+| Input | iPazzPort 2.4G Mini Wireless Keyboard with Touchpad (KP-810-19S) or similar |
 | Network | WiFi or Ethernet connection |
 | Software | Node.js 20+, Chromium browser |
 
@@ -72,7 +77,8 @@ The display is designed to be always-on and glanceable — large typography, col
 |-------|-----------|---------|
 | Backend | Node.js + Express | API server, OAuth handling, data caching |
 | Frontend | React + Vite | Calendar UI rendering |
-| Auth | Google OAuth 2.0 | Calendar data access |
+| Drag-and-Drop | @dnd-kit/core | Event rescheduling within the week view |
+| Auth | Google OAuth 2.0 | Calendar read/write access |
 | Weather | OpenWeatherMap 3.0 | Current conditions + forecast |
 | Display | Chromium Kiosk | Full-screen browser on Pi |
 | Process Mgmt | systemd | Server auto-start on boot |
@@ -105,9 +111,11 @@ skylight-calendar/
 │   │   ├── components/
 │   │   │   ├── Header.jsx
 │   │   │   ├── CalendarLegend.jsx
-│   │   │   ├── WeekView.jsx
-│   │   │   ├── DayColumn.jsx
+│   │   │   ├── WeekView.jsx        # DnD context wrapper
+│   │   │   ├── DayColumn.jsx       # Droppable zone
+│   │   │   ├── DraggableEvent.jsx  # Drag wrapper for events
 │   │   │   ├── EventCard.jsx
+│   │   │   ├── EditEventDialog.jsx # Modal for editing events
 │   │   │   ├── WeatherWidget.jsx
 │   │   │   └── SetupScreen.jsx
 │   │   └── hooks/
@@ -158,6 +166,18 @@ skylight-calendar/
 ### Important Note on Consent Screen
 
 If your app is in "Testing" mode, only users you explicitly add as test users can authenticate. You can add up to 100 test users without going through Google's verification process.
+
+### OAuth Scopes
+
+The application requests the following OAuth scopes:
+
+| Scope | Purpose |
+|-------|---------|
+| `calendar.readonly` | Read calendar list and event data |
+| `calendar.calendarlist.readonly` | List available calendars |
+| `calendar.events` | Update events (drag-and-drop, edit dialog) |
+
+**If upgrading from a previous version** that only had read-only scopes, users must re-authenticate by visiting `/api/auth/login` to grant the new write permission. Delete `.tokens.json` first if the existing token doesn't include write access.
 
 ## Step 2: OpenWeatherMap Setup
 
@@ -352,6 +372,61 @@ Use as a personal scheduling dashboard in a home office.
 
 \newpage
 
+# Interacting with Events
+
+## Input Device
+
+The Skylight Calendar is designed to be operated with an **iPazzPort 2.4G Mini Wireless Keyboard with Touchpad Mouse Combo (KP-810-19S)**. This compact wireless keyboard provides:
+
+- A built-in touchpad for cursor/pointer control
+- Full QWERTY keyboard for text input in the edit dialog
+- Tab key for navigating between form fields
+- Escape key for closing dialogs
+
+The UI has been optimized for this device:
+
+- **Visible cursor** (not hidden as in a pure kiosk display)
+- **44px minimum button/input height** for comfortable touchpad targeting
+- **5px drag activation distance** to prevent accidental drags from tap-clicks
+- **Focus rings** on all interactive elements for Tab navigation
+
+## Drag-and-Drop (Within Current Week)
+
+To move an event to a different day within the current week:
+
+1. Position the cursor over the event card using the touchpad
+2. Click and hold (press down), then move the touchpad in the direction of the target day
+3. The event follows the cursor, and the target day column highlights in blue
+4. Release the click to drop the event on the highlighted day
+
+**Behavior:**
+- The event's start and end times are preserved (only the date changes)
+- The event's duration stays the same
+- Changes sync to Google Calendar immediately
+- If the sync fails, the event snaps back to its original position
+
+## Edit Dialog (Any Date/Time)
+
+For more comprehensive edits, or to reschedule to a date outside the visible week:
+
+1. Double-click (or double-tap) an event card
+2. The edit dialog opens with all fields pre-populated:
+   - **Title**: The event's name/summary
+   - **Date**: Can be changed to any date (not limited to the current week)
+   - **Start Time**: Event start time
+   - **End Time**: Event end time
+   - **Description**: Event notes/details
+3. Modify any fields as needed
+4. Click "Save Changes" to push the update to Google Calendar
+5. Click "Cancel" or press Escape to close without saving
+
+**Keyboard shortcuts in the dialog:**
+- **Tab**: Move between fields
+- **Escape**: Close without saving
+- **Enter** (in any field): Submit the form
+
+\newpage
+
 # API Reference
 
 ## Authentication Endpoints
@@ -434,6 +509,60 @@ Returns events for the specified calendars and time range.
 ]
 ```
 
+### PATCH /api/calendar/events/:id
+
+Updates an existing event on Google Calendar. Called when the user drags an event to a new day or submits the edit dialog.
+
+**URL Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| id | string | The Google Calendar event ID |
+
+**Request Body (JSON):**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| calendarId | string | Yes | Which calendar the event belongs to |
+| title | string | No | New event title/summary |
+| start | ISO string | No | New start date-time |
+| end | ISO string | No | New end date-time |
+| description | string | No | New event description |
+
+**Example Request:**
+```json
+{
+  "calendarId": "primary",
+  "title": "Rescheduled Meeting",
+  "start": "2026-06-30T14:00:00Z",
+  "end": "2026-06-30T15:00:00Z"
+}
+```
+
+**Response:**
+```json
+{
+  "id": "abc123",
+  "calendarId": "primary",
+  "title": "Rescheduled Meeting",
+  "start": "2026-06-30T14:00:00Z",
+  "end": "2026-06-30T15:00:00Z",
+  "allDay": false,
+  "location": null,
+  "description": null
+}
+```
+
+**Error Responses:**
+
+| Status | Cause |
+|--------|-------|
+| 400 | Missing calendarId in request body |
+| 401 | Not authenticated |
+| 500 | Google Calendar API error |
+
+**Note:** Demo events (IDs starting with "demo-") are handled locally and don't call the Google API.
+
 ## Weather Endpoint
 
 ### GET /api/weather/current
@@ -476,8 +605,8 @@ npm run test:watch  # Run in watch mode during development
 Server tests cover:
 
 - **Authentication routes**: OAuth flow, token persistence, login/logout
-- **Calendar routes**: Calendar listing, event fetching, multi-calendar merging, error handling
-- **Weather routes**: API integration, data transformation, error states, response caching
+- **Calendar routes**: Calendar listing, event fetching, multi-calendar merging, event updates (PATCH), demo event handling, error handling
+- **Weather routes**: API integration, data transformation, error states, demo fallback
 
 ## Client Tests
 
@@ -489,9 +618,12 @@ npm run test:watch  # Run in watch mode during development
 
 Client tests cover:
 
-- **EventCard**: Rendering, time formatting, all-day events, color application
-- **DayColumn**: Day header, event listing, today highlighting, empty state
-- **WeekView**: 7-day grid, event distribution, loading state
+- **EventCard**: Rendering, time formatting, all-day events, color application, drag overlay styles
+- **DayColumn**: Day header, event listing, today highlighting, drop target, double-click edit trigger
+- **DraggableEvent**: Drag affordance, accessibility attributes, double-click handler, positioning
+- **EditEventDialog**: Form population, auto-focus, Escape close, backdrop close, save/cancel, error display, disabled state
+- **WeekView**: 7-day grid, event distribution, loading state, time gutter
+- **useCalendarData**: Fetch on mount, optimistic update, rollback on failure, network error handling
 - **WeatherWidget**: Condition icons, temperature display, null handling
 - **SetupScreen**: Connect button, instructional text
 
@@ -903,4 +1035,6 @@ If the server crashes, it will automatically restart within 5 seconds.
 - **API keys** are stored in `.env`. Same guidance applies.
 - The server binds to `0.0.0.0` (all interfaces) so it's accessible from your local network. Do **not** expose port 3001 to the public internet.
 - If you must access the calendar remotely, use a VPN or SSH tunnel rather than opening the port in your router.
-- Google OAuth tokens include a refresh token that grants ongoing access to your calendar data. If the Pi is compromised, revoke access at `https://myaccount.google.com/permissions`.
+- **Write access**: The app now has write access to your Google Calendar events (via the `calendar.events` scope). Anyone with network access to the Pi can modify your events through the UI. Ensure your local network is trusted.
+- Google OAuth tokens include a refresh token that grants ongoing read AND write access to your calendar data. If the Pi is compromised, revoke access immediately at `https://myaccount.google.com/permissions`.
+- The PATCH endpoint only allows modifying existing events — it cannot create or delete events.

@@ -1,21 +1,48 @@
+/**
+ * Global Styles for Skylight Calendar
+ *
+ * This stylesheet defines CSS custom properties (variables) for theming,
+ * resets default browser styles, and sets up the base layout.
+ *
+ * The calendar is designed to run full-screen on a Raspberry Pi connected
+ * to a TV, with interaction via an iPazzPort wireless mini keyboard with
+ * built-in touchpad. The cursor is made visible (not hidden) to support
+ * touchpad navigation, and interactive elements use generous sizing for
+ * comfortable touchpad targeting.
+ */
+
+/* Reset all elements to border-box and remove default spacing */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/**
+ * CSS Custom Properties (Theme Variables)
+ * These define the warm, neutral color palette used throughout the app.
+ * Changing these values here will update the entire UI consistently.
+ */
 :root {
-  --bg-primary: #faf8f5;
-  --bg-secondary: #ffffff;
-  --text-primary: #1a1a2e;
-  --text-secondary: #4a5568;
-  --text-muted: #a0aec0;
-  --border: #e8e4df;
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  --radius: 12px;
-  --today-highlight: #fff9e6;
+  --bg-primary: #faf8f5;       /* Main page background — warm off-white */
+  --bg-secondary: #ffffff;     /* Card/panel backgrounds — pure white */
+  --text-primary: #1a1a2e;     /* Headings and important text — near-black */
+  --text-secondary: #4a5568;   /* Supporting text — medium gray */
+  --text-muted: #a0aec0;       /* Subtle labels — light gray */
+  --border: #e8e4df;           /* Dividers and outlines — warm light gray */
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.04);  /* Subtle card shadows */
+  --radius: 12px;              /* Standard border-radius for cards */
+  --today-highlight: #fff9e6;  /* Background tint for today's column */
+  --drag-highlight: #e8f4fd;   /* Background tint when dragging over a day column */
+  --focus-ring: #4285f4;       /* Keyboard focus indicator color */
 }
 
+/**
+ * Base document styles.
+ * The cursor is set to 'default' (visible arrow) because the Raspberry Pi
+ * is operated with an iPazzPort mini wireless keyboard that has a built-in
+ * touchpad mouse. Users need to see the cursor to navigate.
+ */
 html, body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--bg-primary);
@@ -23,9 +50,41 @@ html, body {
   height: 100%;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
-  cursor: none;
+  cursor: default;
 }
 
+/* React root element fills the full viewport */
 #root {
   height: 100%;
+}
+
+/**
+ * Focus styles for keyboard/touchpad navigation.
+ * The iPazzPort keyboard has Tab/Shift+Tab keys, so we ensure focusable
+ * elements have a clearly visible focus ring.
+ */
+*:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/**
+ * Drag-and-drop visual feedback.
+ * Applied to event cards while being dragged to indicate they're in motion.
+ */
+.dragging {
+  opacity: 0.7;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+
+/**
+ * Drop target highlighting.
+ * Applied to day columns when a dragged event hovers over them,
+ * providing clear visual feedback about where the event will land.
+ */
+.drop-target-active {
+  background: var(--drag-highlight) !important;
+  transition: background 0.15s ease;
 }
